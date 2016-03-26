@@ -14,13 +14,11 @@ p1.then((res)=>{
 }).then((res)=>{
     console.log('response from p3 ',res);
     return p2;
-},(err)=>{
-    console.error('error at p3 ',err);
 }).then((res)=>{
     console.log('response from p2 ',res);
     throw new Error("nothing more to handle");
-}).then((res)=>{
-    console.log('Nothing to reolve i must quit!');
 }).catch((err)=>{
     console.error('Error unhandled earlier ',err);
+}).then((res)=>{
+    console.log('Nothing to resolve i must quit!');
 });
