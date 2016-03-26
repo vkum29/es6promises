@@ -8,19 +8,17 @@ let p3 = new Promise((resolve, reject)=>{
 	setTimeout(resolve, 1000, '30');
 });
 
-Promise.all([p1,p2,p3]).then((res)=>{
-	console.log('res ',res);
+p1.then((res)=>{
+    console.log('response from p1 ',res);
+    return p3;
+}).then((res)=>{
+    console.log('response from p3 ',res);
+    return p2;
+}).then((res)=>{
+    console.log('response from p2 ',res);
+    throw new Error("nothing more to handle");
+}).then((res)=>{
+    console.log('resolve ', res);
 },(err)=>{
-	console.error('error ', err)
+    console.error('recieved ',err);
 });
-
-let p4 = new Promise((resolve, reject) => {
-	reject('40');
-});
-
-Promise.all([p1,p2,p3,p4]).then((res)=>{
-	console.log('res ',res);
-},(err)=>{
-	console.error('error ', err);
-});
-
