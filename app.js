@@ -2,7 +2,7 @@
 
 'use strict';
 
-let p1 = Promise.resolve(10);
+let p1 = Promise.reject(10);
 let p2 = 20;
 let p3 = new Promise((resolve, reject)=>{
 	setTimeout(resolve, 1000, '30');
@@ -10,7 +10,7 @@ let p3 = new Promise((resolve, reject)=>{
 
 p1.then((res)=>{
     console.log('response from p1 ',res);
-    throw p3;
+    return p3;
 }).then((res)=>{
     console.log('response from p3 ',res);
     return p2;
