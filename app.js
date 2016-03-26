@@ -14,3 +14,13 @@ Promise.all([p1,p2,p3]).then((res)=>{
 	console.error('error ', err)
 });
 
+let p4 = new Promise((resolve, reject) => {
+	reject('40');
+});
+
+Promise.all([p1,p2,p3,p4]).then((res)=>{
+	console.log('res ',res);
+},(err)=>{
+	console.error('error ', err);
+});
+
