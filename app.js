@@ -10,15 +10,17 @@ let p3 = new Promise((resolve, reject)=>{
 
 p1.then((res)=>{
     console.log('response from p1 ',res);
-    return p3;
+    throw p3;
 }).then((res)=>{
     console.log('response from p3 ',res);
     return p2;
+},(err)=>{
+    console.error('error at p3 ',err);
 }).then((res)=>{
     console.log('response from p2 ',res);
     throw new Error("nothing more to handle");
 }).then((res)=>{
-    console.log('resolve ', res);
-},(err)=>{
-    console.error('recieved ',err);
+    console.log('Nothing to reolve i must quit!');
+}).catch((err)=>{
+    console.error('Error unhandled earlier ',err);
 });
