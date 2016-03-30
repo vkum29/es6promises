@@ -4,14 +4,10 @@
 
 let p1 = Promise.reject("Testing static reject");
 
-p1.then(function(reason) {
-  // not called
-}, function(reason) {
+p1.catch((reason) => {
   console.log(reason); // "Testing static reject"
 });
 
-Promise.reject(new Error("fail")).then(function(error) {
-  // not called
-}, function(error) {
+Promise.reject(new Error("fail")).catch((error) => {
   console.log(error); // Stacktrace
 });
