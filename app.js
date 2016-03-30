@@ -1,4 +1,6 @@
-//promise.all
+//promise.then
+//then returns a promise
+//is used to chain multiple actions
 
 'use strict';
 
@@ -8,7 +10,9 @@ let p3 = new Promise((resolve, reject)=>{
 	setTimeout(resolve, 1000, '30');
 });
 
+//Then handler
 p1.then((res)=>{
+    //handles resolution
     console.log('response from p1 ',res);
     return p3;
 }).then((res)=>{
@@ -20,5 +24,6 @@ p1.then((res)=>{
 }).then((res)=>{
     console.log('resolve ', res);
 },(err)=>{
+    //handles rejection
     console.error('recieved ',err);
 });
