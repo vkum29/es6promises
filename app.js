@@ -1,4 +1,4 @@
-//promise.all
+//promise.reject
 
 'use strict';
 
