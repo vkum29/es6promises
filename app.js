@@ -15,11 +15,10 @@ Promise.all([p1,p2,p3]).then((res)=>{
 	console.error('error ', err)
 });
 
-
+//Rejection scenario:
 let p4 = new Promise((resolve, reject) => {
 	reject('40');
 });
-
 
 //Executes when any rejection occurs so it wont wait for p3 to get resolved.
 Promise.all([p1,p2,p3,p4]).then((res)=>{
@@ -27,4 +26,3 @@ Promise.all([p1,p2,p3,p4]).then((res)=>{
 },(err)=>{
 	console.error('error ', err);
 });
-
