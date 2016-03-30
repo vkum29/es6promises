@@ -1,14 +1,22 @@
-//promise.all
+//promise.creation
 
 'use strict';
 
-let p1 = new Promise(function(resolve, reject){
-	resolve({then: function(onFullfill, onReject){ console.log("a thenable object in promise."); onReject("then executed");}});
+
+//settled promise state: fulfilled
+let p1 = Promise.resolve('resolve');
+
+//settled promise state: rejected
+let p2 = Promise.reject('rejected');
+
+
+//unsettled promise: pending
+let p3 = new Promise((resolve, reject)=>{
+    setTimeout(resolve, 1000, '30');
 });
 
-p1.then(function(reason) {
-  console.log("success ",reason);
-}, function(reason) {
-  console.log("failure ",reason); // "Testing static reject"
-});
+console.log(p1);
 
+console.log(p2);
+
+console.log(p3);
