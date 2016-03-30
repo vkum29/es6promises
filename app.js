@@ -3,7 +3,6 @@
 'use strict';
 
 
-
 //settled promise state: fulfilled
 let p1 = Promise.resolve('resolve');
 
