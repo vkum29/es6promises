@@ -8,6 +8,8 @@ let p3 = new Promise((resolve, reject)=>{
 	setTimeout(resolve, 1000, '30');
 });
 
+
+//Executes when all p1,p2,p3 are resolved so will fire after 1ms at least.
 Promise.all([p1,p2,p3]).then((res)=>{
 	console.log('res ',res);
 },(err)=>{
