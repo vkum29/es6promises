@@ -1,5 +1,3 @@
-//Readme.md
-
 # ES6 - Promise
 
 All code is inside app.js and for execution is tested with node version 4.3.0 via *command* _node app[.js]_ command in terminal
@@ -17,6 +15,7 @@ All code is inside app.js and for execution is tested with node version 4.3.0 vi
 * promise.then-01
 * promise.thenable-01
 * promise.create-01
+* promise.es5
 
 *Command*: git checkout < tagName >, *Example* : git checkout promise.all-01
 
@@ -53,5 +52,6 @@ All code is inside app.js and for execution is tested with node version 4.3.0 vi
 * Promise.create:
   * *promise.create-01* : Example of creating promise
 
-
+* Creating our own Promise like thing
+  * *promise.es5* : Example of building promise feature in es5
 
