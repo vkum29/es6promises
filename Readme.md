@@ -1,6 +1,8 @@
 # ES6 - Promise
 
-All code is inside app.js and for execution is tested with node version 4.3.0 via *command* _node app[.js]_ command in terminal
+All ES6 understanding promise - code is inside app.js and is executed with node version 4.3.0 via *command* _node app[.js]_ command in terminal
+
+Having promise in es5 -> a way to understand promise is in myPromise.js. Use *command* to run it is  _node myPromise[.js]_
 
 ## To checkout an example use tags:
 * promise.all-01
