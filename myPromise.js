@@ -10,6 +10,7 @@ var window;
 
 (function(global) {
     'use strict';
+    var nextResultantValue;
     //callback for promise then and catch handlers are resolved via cbHandler
     function cbHandler() {
         var _self = this;
@@ -99,43 +100,59 @@ var window;
     }
 
     MyPromise.prototype.then = function(resolnHandler, rejectnHandler) {
-
-        //Then is executed immediately if the Promise was already resolved
-
         var _self = this;
-        if (_self.state === 'resolved') {
-            resolnHandler(_self);
-        } else if (_self.state === 'rejected' && _self.rejection === 'unhandled') {
-            rejectnHandler(_self);
-        } else {
-            //Will store the handlers in cbPool to executed later once promise is resolved
-            _self.cbPool.push({
-                'resolved': resolnHandler,
-                'rejected': rejectnHandler
-            });
+        //Then is executed immediately if the Promise was already resolved
+        try{
+            if (_self.state === 'resolved') {
+               nextResultantValue = resolnHandler(nextResultantValue);
+            } else if (_self.state === 'rejected') {
+                _self.state = 'resolved';
+                nextResultantValue = rejectnHandler(nextResultantValue);
+            } else {
+                //Will store the handlers in cbPool to executed later once promise is resolved
+                _self.cbPool.push({
+                    'resolved': resolnHandler,
+                    'rejected': rejectnHandler
+                });
+            }
+            if(nextResultantValue && nextResultantValue.type === 'MyPromise'){
+                return nextResultantValue;
+            }
+        }catch(err){
+            _self.state = 'rejected';
+            nextResultantValue = err;
         }
+
         //Chaining promise
         return _self;
+
     };
 
     MyPromise.prototype.catch = function(errorHandler) {
 
         //Just like then, is executed immediately if the Promise was already resolved
         var _self = this;
-        if (_self.state !== 'pending' && _self.rejection === 'unhandled') {
-            if (errorHandler && typeof errorHandler === 'function') {
-                errorHandler(_self.finalValue);
-                _self.rejection = 'handled';
+
+        try{
+            if (_self.state === 'rejected') {
+                if (errorHandler && typeof errorHandler === 'function') {
+                    nextResultantValue = errorHandler(nextResultantValue);
+                    _self.state = 'resolved';
+                }
+            } else if(_self.state === 'pending'){
+                //Will store the handlers in cbPool to executed later once promise is resolved
+                _self.cbPool.push({
+                    'rejected': errorHandler
+                });
             }
-        } else {
-            //Will store the handlers in cbPool to executed later once promise is resolved
-            _self.cbPool.push({
-                'rejected': errorHandler
-            });
+        }catch(err){
+            _self.state = 'rejected';
+            nextResultantValue = err;
         }
 
         //Chaining promise
         return _self;
+
     };
 
     //Expose resolve and reject as a function
@@ -143,6 +160,19 @@ var window;
         return new MyPromise(function(resolve) {
             resolve(obj);
         });
+    };
+
+
+    MyPromise.toString = function() {
+        var _self = this;
+        var value = '<pending>';
+        if (_self.state === 'resolved') {
+            value = '\'' + _self.finalValue + '\'';
+        } else if (_self.state === 'rejected') {
+            value = '<' + _self.state + '> \'' + _self.finalValue + '\'';
+        }
+
+        return 'MyPromise { ' + value + ' }';
     };
 
     MyPromise.reject = function(err) {
@@ -159,11 +189,7 @@ var window;
 
 
 
-var p = new MyPromise(function(resolve) {//takes two params resolve and reject in same order
-    'use strict';
-    console.log('resolve promise \'p\' after 3000ms');
-    setTimeout(resolve, 3000, 'success for p');
-});
+var p = MyPromise.resolve('hi');
 
 
 p.then(function(value) {
@@ -182,6 +208,7 @@ p.then(function(value) {
     'use strict';
     console.log('\n', 'Error 2:: ', value);
     console.log('\t', 'promise \'p\' resolved and then was catched');
+    throw new Error("just another try for catch");
 }).then(function(value) {
     'use strict';
     console.log('\n', 'value 3:: ', value);
