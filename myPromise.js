@@ -34,36 +34,64 @@ var window;
             _self.cbPool.push(obj);
         }
     }
+
     //callback for promise then and catch handlers are resolved via cbHandler
     function cbHandler() {
         var _self = this;
         var result = _self.value;
         var foundPromise = false;
-        _self.cbPool.forEach(function(object) {
-            try {
-                if (foundPromise) {
-                    updateCbPool.call(result,object);
-                } else if (object[_self.state]) {
-                    result = object[_self.state](result);
-                    _self.state = 'resolved';
-                    if (result && result.type === 'MyPromise') {
-                        foundPromise = true;
-                    }
-                }
-
-            } catch (err) {
-                _self.state = 'rejected';
-                if(err.type === 'MyPromise'){
-                    result = err.toString();
-                } else {
-                    result = err;
-                }
+        if(_self.cbPool && _self.cbPool.length > 0){
+            if(_self.cbPool[0].resolved || _self.cbPool[0].rejected){
+                singleThreadHandler.call(_self, true);
+            }else{
+                multiThreadHandler.call(_self, true);
             }
+        }
+    }
+
+    function multiThreadHandler(expectCallback){
+        var _self = this;
+        var result = _self.cbPool.forEach(function(obj) {
+            singleThreadHandler.call(obj, false);
         });
 
         if(result && result.type === 'MyPromise' && result.state !== 'pending'){
             cbHandler.call(result);
         }
+    }
+
+    function singleThreadHandler(expectCallback){
+        var _self = this;
+        var result = _self.value;
+        var foundPromise = false;
+            _self.cbPool.forEach(function(object){
+                try {
+                    if (foundPromise) {
+                        updateCbPool.call(result,object);
+                    } else if (object[_self.state]) {
+                        result = object[_self.state](result);
+                        _self.state = 'resolved';
+                        if (result && result.type === 'MyPromise') {
+                            foundPromise = true;
+                        }
+                    }
+
+                } catch (err) {
+                    _self.state = 'rejected';
+                    if(err.type === 'MyPromise'){
+                        result = err.toString();
+                    } else {
+                        result = err;
+                    }
+                }
+            });
+
+            if(expectCallback){
+                if(result && result.type === 'MyPromise' && result.state !== 'pending'){
+                    cbHandler.call(result);
+                }
+            }
+
     }
 
     //resolve handler used by parameter for then handler
@@ -112,7 +140,7 @@ var window;
         return _self;
     }
 
-    MyPromise.prototype.then = function(resolnHandler, rejectnHandler) {
+    MyPromise.prototype.myThen = function(resolnHandler, rejectnHandler) {
         var _self = this;
         var cb = resolnHandler;
 
@@ -140,7 +168,42 @@ var window;
 
     };
 
+    //Expose resolve and reject as a function
+    MyPromise.prototype.then = function(resolnHandler, rejectnHandler) {
+        var _self = this;
+        var chainable;
+        var result = null;
+
+        if(!_self.chained){
+            CPromise.prototype = _self;
+            if(_self.state !== 'pending'){
+                result = _self.result;
+            }
+            function CPromise(){
+                this.chained = true;
+                this.result = result;
+                this.cbPool = [];
+            }
+
+            chainable = new CPromise();
+            _self.cbPool.push(chainable);
+
+            return chainable.myThen(resolnHandler, rejectnHandler); // might return new promise or self
+
+        } else {
+            return _self.myThen(resolnHandler, rejectnHandler);
+        }
+    };
+
+    //Expose resolve and reject as a function
     MyPromise.prototype.catch = function(rejectnHandler) {
+        var _self = this;
+
+        _self.then(undefined, rejectnHandler);
+
+    };
+
+    MyPromise.prototype.myCatch = function(rejectnHandler) {
 
         //Just like then, is executed immediately if the Promise was already resolved
         var _self = this;
@@ -193,16 +256,14 @@ var window;
 
 
 
-var p = new MyPromise(function(resolve, reject){
-    setTimeout(reject, 1000, 'hi');
-});
-
+var p = MyPromise.resolve('hi');
 
 p.then(function(value) {
     'use strict';
     console.log('\n', 'value 1:: ', value);
     console.log('\t', 'promise \'p\' resolved');
     return new MyPromise(function(resolve, reject){
+        console.log("resolve my promiseee ");
         setTimeout(reject, 1000, 'hi1');
     });
 }, function(err) {
@@ -217,7 +278,9 @@ p.then(function(value) {
     console.log('\n', 'Error 2:: ', value);
     console.log('\t', 'promise \'p\' resolved and then was catched');
     throw new Error("just another try for catch");
-}).then(function(value) {
+});
+
+p.then(function(value) {
     'use strict';
     console.log('\n', 'value 3:: ', value);
     console.log('\t', 'promise \'p\' resolved and then was handled 2nd time');
@@ -225,8 +288,11 @@ p.then(function(value) {
     'use strict';
     console.log('\n', 'Error 3:: ', err);
     console.log('\t', 'promise \'p\' resolved and then was unhandled 2nd time');
-}).catch(function(value) {
+    return new MyPromise(function(resolve, reject){
+        setTimeout(resolve, 1000, 'hi1');
+    });
+}).then(function(value) {
     'use strict';
-    console.log('\n', 'Error 4:: ', value);
-    console.log('\t', 'promise \'p\' resolved and then was catched again');
+    console.log('\n', 'value 4:: ', value);
+    console.log('\t', 'promise \'p\' resolved and then was handled again');
 });
