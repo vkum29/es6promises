@@ -112,7 +112,7 @@ var window;
         return _self;
     }
 
-    MyPromise.prototype.then = function(resolnHandler, rejectnHandler) {
+    MyPromise.prototype.myThen = function(resolnHandler, rejectnHandler) {
         var _self = this;
         var cb = resolnHandler;
 
@@ -140,7 +140,49 @@ var window;
 
     };
 
+    //Expose resolve and reject as a function
+    MyPromise.prototype.then = function(resolnHandler, rejectnHandler) {
+        var _self = this;
+        var chainable;
+        if(!_self.isChained){
+            if(_self.state === 'pending'){
+                chainable = new MyPromise(_self.handler);
+            }else if(_self.state === 'resolved'){
+                chainable = MyPromise.resolve(_self.value);
+            }else{
+                chainable = MyPromise.reject(_self.value);
+            }
+            chainable.isChained = true;
+
+            return chainable.myThen(resolnHandler, rejectnHandler); // might return new promise or self
+
+        } else {
+            return _self.myThen(resolnHandler, rejectnHandler);
+        }
+    };
+
+    //Expose resolve and reject as a function
     MyPromise.prototype.catch = function(rejectnHandler) {
+        var _self = this;
+        var chainable;
+        if(!_self.isChained){
+            if(_self.state === 'pending'){
+                chainable = new MyPromise(_self.handler);
+            }else if(_self.state === 'resolved'){
+                chainable = MyPromise.resolve(_self.value);
+            }else{
+                chainable = MyPromise.reject(_self.value);
+            }
+
+            chainable.isChained = true;
+            return chainable.myCatch(rejectnHandler);
+
+        } else {
+            return _self.myCatch(rejectnHandler);
+        }
+    };
+
+    MyPromise.prototype.myCatch = function(rejectnHandler) {
 
         //Just like then, is executed immediately if the Promise was already resolved
         var _self = this;
@@ -193,16 +235,14 @@ var window;
 
 
 
-var p = new MyPromise(function(resolve, reject){
-    setTimeout(reject, 1000, 'hi');
-});
-
+var p = MyPromise.resolve('hi');
 
 p.then(function(value) {
     'use strict';
     console.log('\n', 'value 1:: ', value);
     console.log('\t', 'promise \'p\' resolved');
     return new MyPromise(function(resolve, reject){
+        console.log("resolve my promiseee ");
         setTimeout(reject, 1000, 'hi1');
     });
 }, function(err) {
@@ -217,7 +257,9 @@ p.then(function(value) {
     console.log('\n', 'Error 2:: ', value);
     console.log('\t', 'promise \'p\' resolved and then was catched');
     throw new Error("just another try for catch");
-}).then(function(value) {
+});
+
+p.then(function(value) {
     'use strict';
     console.log('\n', 'value 3:: ', value);
     console.log('\t', 'promise \'p\' resolved and then was handled 2nd time');
@@ -225,8 +267,11 @@ p.then(function(value) {
     'use strict';
     console.log('\n', 'Error 3:: ', err);
     console.log('\t', 'promise \'p\' resolved and then was unhandled 2nd time');
-}).catch(function(value) {
+    return new MyPromise(function(resolve, reject){
+        setTimeout(resolve, 1000, 'hi1');
+    });
+}).then(function(value) {
     'use strict';
-    console.log('\n', 'Error 4:: ', value);
+    console.log('\n', 'value 4:: ', value);
     console.log('\t', 'promise \'p\' resolved and then was catched again');
 });
