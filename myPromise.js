@@ -10,59 +10,72 @@ var window;
 
 (function(global) {
     'use strict';
-    var nextResultantValue;
+
+    function handleResolveReject(handler){
+        var _self = this;
+        try{
+            if(handler && typeof handler === 'function' ){
+                _self.result = handler(_self.result);
+                _self.state = 'resolved';
+            }
+        }catch(error){
+            _self.state = 'rejected';
+            if(error.type === 'MyPromise'){
+                _self.result = error.toString();
+            } else {
+                _self.result = error;
+            }
+        }
+    }
+
+    function updateCbPool(obj){
+        var _self = this;
+        if(obj.resolved || obj.rejected){
+            _self.cbPool.push(obj);
+        }
+    }
     //callback for promise then and catch handlers are resolved via cbHandler
     function cbHandler() {
         var _self = this;
-        var currentResult = _self.finalValue;
-        var nextResult;
+        var result = _self.value;
         var foundPromise = false;
         _self.cbPool.forEach(function(object) {
             try {
                 if (foundPromise) {
-                    currentResult.cbPool.push(object);
+                    updateCbPool.call(result,object);
                 } else if (object[_self.state]) {
-                    nextResult = object[_self.state](currentResult);
-                    currentResult = nextResult;
+                    result = object[_self.state](result);
                     _self.state = 'resolved';
-                    if (nextResult && nextResult.type === 'MyPromise') {
+                    if (result && result.type === 'MyPromise') {
                         foundPromise = true;
                     }
                 }
 
             } catch (err) {
                 _self.state = 'rejected';
-                currentResult = err;
+                if(err.type === 'MyPromise'){
+                    result = err.toString();
+                } else {
+                    result = err;
+                }
             }
         });
+
+        if(result && result.type === 'MyPromise' && result.state !== 'pending'){
+            cbHandler.call(result);
+        }
     }
 
     //resolve handler used by parameter for then handler
-    function resolve(value) {
+    function resolveReject(value, state) {
         var _self = this;
         //A promise is resolved/rejected only once - ensured that with check
         if (['resolved', 'rejected'].indexOf(_self.state) > -1) {
             return _self;
         } else {
-            _self.state = 'resolved';
-            _self.finalValue = value;
-            cbHandler.call(_self);
-        }
-        //Chaining promise
-        return _self;
-    }
-
-    //reject handler used in then
-    function reject(value) {
-        var _self = this;
-        //A promise is resolved/rejected only once - ensured that with check
-        if (['resolved', 'rejected'].indexOf(_self.state) > -1) {
-            return _self;
-        } else {
-            _self.state = 'rejected';
-            _self.rejection = 'unhandled';
-            _self.finalValue = value;
-
+            _self.state = state;
+            _self.value = value;
+            _self.result = value;
             cbHandler.call(_self);
         }
         //Chaining promise
@@ -73,11 +86,11 @@ var window;
     function MyPromise(handler) {
         var _self = this;
         function resolnHandler(value) {
-            resolve.call(_self, value);
+            resolveReject.apply(_self, [value, 'resolved']);
         }
 
         function rejectnHandler(value) {
-            reject.call(_self, value);
+            resolveReject.apply(_self, [value, 'rejected']);
         }
 
         //handler is must for a promise else throw error
@@ -101,26 +114,25 @@ var window;
 
     MyPromise.prototype.then = function(resolnHandler, rejectnHandler) {
         var _self = this;
+        var cb = resolnHandler;
+
         //Then is executed immediately if the Promise was already resolved
-        try{
-            if (_self.state === 'resolved') {
-               nextResultantValue = resolnHandler(nextResultantValue);
-            } else if (_self.state === 'rejected') {
-                _self.state = 'resolved';
-                nextResultantValue = rejectnHandler(nextResultantValue);
-            } else {
-                //Will store the handlers in cbPool to executed later once promise is resolved
-                _self.cbPool.push({
-                    'resolved': resolnHandler,
-                    'rejected': rejectnHandler
-                });
+        if(_self.state === 'pending'){
+            //Will store the handlers in cbPool to executed later once promise is resolved
+            updateCbPool.call(_self,{
+                'resolved': resolnHandler,
+                'rejected': rejectnHandler
+            });
+        } else {
+            if (_self.state === 'rejected'){
+                cb = rejectnHandler;
             }
-            if(nextResultantValue && nextResultantValue.type === 'MyPromise'){
-                return nextResultantValue;
+
+            handleResolveReject.call(_self,cb);
+
+            if(_self.result && _self.result.type === 'MyPromise'){
+                return _self.result;
             }
-        }catch(err){
-            _self.state = 'rejected';
-            nextResultantValue = err;
         }
 
         //Chaining promise
@@ -128,26 +140,18 @@ var window;
 
     };
 
-    MyPromise.prototype.catch = function(errorHandler) {
+    MyPromise.prototype.catch = function(rejectnHandler) {
 
         //Just like then, is executed immediately if the Promise was already resolved
         var _self = this;
 
-        try{
-            if (_self.state === 'rejected') {
-                if (errorHandler && typeof errorHandler === 'function') {
-                    nextResultantValue = errorHandler(nextResultantValue);
-                    _self.state = 'resolved';
-                }
-            } else if(_self.state === 'pending'){
-                //Will store the handlers in cbPool to executed later once promise is resolved
-                _self.cbPool.push({
-                    'rejected': errorHandler
-                });
-            }
-        }catch(err){
-            _self.state = 'rejected';
-            nextResultantValue = err;
+        if (_self.state === 'rejected') {
+            handleResolveReject.call(_self,rejectnHandler);
+        } else if(_self.state === 'pending'){
+            //Will store the handlers in cbPool to executed later once promise is resolved
+            updateCbPool.call(_self,{
+                'rejected': rejectnHandler
+            });
         }
 
         //Chaining promise
@@ -163,13 +167,13 @@ var window;
     };
 
 
-    MyPromise.toString = function() {
+    MyPromise.prototype.toString = function() {
         var _self = this;
         var value = '<pending>';
         if (_self.state === 'resolved') {
-            value = '\'' + _self.finalValue + '\'';
+            value = '\'' + _self.value + '\'';
         } else if (_self.state === 'rejected') {
-            value = '<' + _self.state + '> \'' + _self.finalValue + '\'';
+            value = '<' + _self.state + '> \'' + _self.value + '\'';
         }
 
         return 'MyPromise { ' + value + ' }';
@@ -189,21 +193,25 @@ var window;
 
 
 
-var p = MyPromise.resolve('hi');
+var p = new MyPromise(function(resolve, reject){
+    setTimeout(reject, 1000, 'hi');
+});
 
 
 p.then(function(value) {
     'use strict';
     console.log('\n', 'value 1:: ', value);
     console.log('\t', 'promise \'p\' resolved');
-    throw new MyPromise(function(resolve) { //takes two params resolve and reject in same order
-        console.log('resolve promise \'p1\' after 3000ms');
-        setTimeout(resolve, 3000, 'success for p1');
+    return new MyPromise(function(resolve, reject){
+        setTimeout(reject, 1000, 'hi1');
     });
 }, function(err) {
     'use strict';
     console.log('\n', 'Error 1:: ', err);
     console.log('\t', 'promise \'p\' rejected');
+    return new MyPromise(function(resolve, reject){
+        setTimeout(reject, 1000, 'hi12');
+    });
 }).catch(function(value) {
     'use strict';
     console.log('\n', 'Error 2:: ', value);
